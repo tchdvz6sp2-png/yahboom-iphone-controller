@@ -1,0 +1,93 @@
+# Yahboom Rider Pi CM4 Configuration
+
+# Network settings
+network:
+  # UDP port for receiving motor control commands
+  motor_udp_port: 5005
+  
+  # RTSP streaming port for video output
+  rtsp_port: 8554
+  
+  # Interface to bind to (0.0.0.0 for all interfaces)
+  bind_address: "0.0.0.0"
+
+# Camera configuration
+camera:
+  # Camera resolution [width, height]
+  resolution: [640, 480]
+  
+  # Frames per second
+  framerate: 30
+  
+  # Video format
+  format: "h264"
+  
+  # Video bitrate in bits per second (2Mbps default)
+  bitrate: 2000000
+  
+  # Camera rotation (0, 90, 180, 270)
+  rotation: 0
+  
+  # Camera device (for v4l2)
+  device: "/dev/video0"
+
+# Motor controller settings
+motors:
+  # I2C bus number (usually 1 on Raspberry Pi)
+  i2c_bus: 1
+  
+  # Motor controller I2C address
+  i2c_address: 0x16
+  
+  # Maximum speed limit (0-100)
+  speed_limit: 100
+  
+  # Acceleration rate (0-100, higher = faster acceleration)
+  acceleration: 50
+  
+  # Command timeout in seconds (safety feature)
+  # Motors stop if no command received within this time
+  command_timeout: 1.0
+  
+  # Motor direction inversion (if motors run backwards)
+  invert_left: false
+  invert_right: false
+
+# Logging configuration
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: "INFO"
+  
+  # Log file path (null for no file logging)
+  file: "/var/log/yahboom.log"
+  
+  # Also log to console
+  console: true
+  
+  # Log format
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Safety settings
+safety:
+  # Enable emergency stop functionality
+  emergency_stop_enabled: true
+  
+  # Maximum allowed speed when in safe mode
+  safe_mode_speed_limit: 50
+  
+  # Enable watchdog timer
+  watchdog_enabled: true
+  
+  # Watchdog timeout in seconds
+  watchdog_timeout: 2.0
+
+# Performance tuning
+performance:
+  # Number of worker threads for processing
+  worker_threads: 2
+  
+  # UDP receive buffer size
+  udp_buffer_size: 1024
+  
+  # Enable performance monitoring
+  enable_monitoring: false
