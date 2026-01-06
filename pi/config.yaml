@@ -1,0 +1,78 @@
+# Yahboom Rider Pi CM4 Robot Configuration
+# Edit this file to configure your robot settings
+
+# Robot network settings
+robot:
+  ip_address: "192.168.1.100"  # Your Raspberry Pi's IP address
+  hostname: "yahboom-robot"     # Hostname for the robot
+
+# Motor control settings
+motor:
+  # UDP port for receiving motor commands from iOS app
+  udp_port: 5000
+  
+  # Serial port settings (for direct motor control)
+  # Common values: /dev/ttyUSB0, /dev/ttyAMA0, /dev/serial0
+  serial_port: "/dev/ttyUSB0"
+  serial_baudrate: 115200
+  
+  # Motor limits and safety
+  max_speed: 100          # Maximum speed value (0-100)
+  max_turn_speed: 80      # Maximum turning speed
+  timeout: 1.0            # Emergency stop timeout in seconds (no command received)
+  
+  # Motor control mode
+  # Options: "sdk" (use Yahboom SDK), "serial" (direct serial communication)
+  control_mode: "serial"
+
+# RTSP video streaming settings
+rtsp:
+  port: 8554                    # RTSP server port
+  path: "/stream"               # RTSP stream path
+  
+  # Video encoding settings
+  resolution: "640x480"         # Options: "320x240", "640x480", "1280x720"
+  framerate: 30                 # Frames per second
+  bitrate: 2000000              # Bitrate in bits/sec (2000000 = 2 Mbps)
+  
+  # GStreamer optimization
+  tune: "zerolatency"           # Encoding tune for low latency
+  preset: "ultrafast"           # Encoding speed preset
+
+# Camera settings
+camera:
+  device: "/dev/video0"         # Camera device (libcamera or v4l2)
+  width: 640                    # Capture width
+  height: 480                   # Capture height
+  fps: 30                       # Capture frame rate
+  
+  # Camera type: "libcamera" (CSI camera) or "v4l2" (USB camera)
+  type: "libcamera"
+
+# Logging configuration
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: "INFO"
+  
+  # Log file location
+  file: "/var/log/yahboom_controller.log"
+  
+  # Console logging
+  console: true
+  
+  # Log format
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Advanced settings
+advanced:
+  # Enable watchdog timer for automatic restart on failure
+  watchdog: true
+  
+  # Performance monitoring
+  monitor_performance: true
+  
+  # Network buffer sizes (bytes)
+  udp_buffer_size: 65536
+  
+  # Command queue size (for motor commands)
+  command_queue_size: 10
