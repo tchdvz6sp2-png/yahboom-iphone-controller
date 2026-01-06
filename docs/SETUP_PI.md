@@ -515,6 +515,8 @@ passwd
 
 ### Configure Firewall
 
+**Important**: The motor controller and RTSP server bind to all network interfaces (0.0.0.0) by default to allow connections from the iOS app on the local network. Use firewall rules to restrict access.
+
 ```bash
 # Install UFW
 sudo apt install ufw -y
@@ -535,6 +537,17 @@ sudo ufw allow 5000/udp
 # Enable firewall
 sudo ufw enable
 ```
+
+**Additional Security Recommendations**:
+1. **Do NOT expose these ports to the internet** - use only on local network
+2. **Use a dedicated WiFi network** for robot control if possible
+3. **Restrict by IP** if you know the iOS device IP:
+   ```bash
+   sudo ufw allow from 192.168.1.50 to any port 5000 proto udp
+   sudo ufw allow from 192.168.1.50 to any port 8554 proto tcp
+   ```
+4. **Change default ports** in config.yaml if desired
+5. **Monitor logs** regularly for unauthorized access attempts
 
 ### Use SSH Keys Instead of Passwords
 

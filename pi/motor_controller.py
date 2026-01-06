@@ -176,6 +176,13 @@ class MotorController:
             port = self.config['motor']['udp_port']
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            
+            # Security Note: Binding to '0.0.0.0' allows connections from any network interface.
+            # This is intentional for local network operation (iOS app on same WiFi).
+            # For production, consider:
+            # 1. Using firewall rules to restrict access (ufw)
+            # 2. Binding to specific interface IP if known
+            # 3. Not exposing this port to the internet
             self.sock.bind(('0.0.0.0', port))
             self.sock.settimeout(0.1)  # 100ms timeout for checking stop condition
             
