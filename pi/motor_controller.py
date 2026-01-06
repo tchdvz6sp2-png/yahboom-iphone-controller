@@ -33,10 +33,22 @@ except ImportError:
     print("Warning: pyserial not installed. Serial communication disabled.")
 
 # Try to import Yahboom SDK (if available)
+# 
+# Yahboom SDK Installation Instructions:
+# 1. Check Yahboom's official documentation for their Python SDK
+# 2. Typically available at: https://www.yahboom.net/study/CM4-Robot
+# 3. Or install from their GitHub repository
+# 4. Once installed, uncomment the import below and set YAHBOOM_SDK_AVAILABLE = True
+# 5. Update send_sdk_command() method with actual SDK calls
+#
+# Example installation (adjust based on actual SDK):
+#   git clone https://github.com/YahboomTechnology/CM4-Robot.git
+#   cd CM4-Robot/Python_SDK
+#   sudo python3 setup.py install
+#
 try:
-    # This is a placeholder - adjust based on actual Yahboom SDK
-    # import yahboom_sdk
-    YAHBOOM_SDK_AVAILABLE = False
+    # import yahboom_sdk  # Uncomment when SDK is installed
+    YAHBOOM_SDK_AVAILABLE = False  # Set to True when SDK is available
 except ImportError:
     YAHBOOM_SDK_AVAILABLE = False
 

@@ -38,10 +38,26 @@ class PersonTracker: ObservableObject {
         // Note: Replace with actual YOLOv8n model
         // For now, this is a placeholder
         
-        // In a real implementation:
-        // 1. Add YOLOv8n.mlmodel to the project
-        // 2. Xcode will generate YOLOv8n class
-        // 3. Load it here:
+        // YOLOv8 CoreML Model Setup Instructions:
+        //
+        // 1. Export YOLOv8n model to CoreML format:
+        //    Install ultralytics: pip install ultralytics
+        //    Run in Python:
+        //      from ultralytics import YOLO
+        //      model = YOLO('yolov8n.pt')  # Downloads automatically if needed
+        //      model.export(format='coreml', nms=True, imgsz=640)
+        //    This creates YOLOv8n.mlpackage
+        //
+        // 2. Add model to Xcode project:
+        //    - Drag YOLOv8n.mlpackage into Xcode project navigator
+        //    - Ensure "Copy items if needed" is checked
+        //    - Add to YahboomController target
+        //    - Xcode will compile to .mlmodelc and generate Swift class
+        //
+        // 3. Uncomment the code below to load the model
+        // 4. Model can be downloaded from: https://github.com/ultralytics/assets/releases
+        //
+        // Implementation code (uncomment when model is added):
         /*
         guard let modelURL = Bundle.main.url(forResource: "YOLOv8n", withExtension: "mlmodelc"),
               let mlModel = try? MLModel(contentsOf: modelURL),
@@ -51,9 +67,11 @@ class PersonTracker: ObservableObject {
         }
         
         self.model = visionModel
+        print("[Tracker] YOLOv8n model loaded successfully")
         */
         
-        print("[Tracker] Model setup (placeholder - add YOLOv8n.mlmodel to project)")
+        print("[Tracker] Model setup incomplete - add YOLOv8n.mlmodel to enable person tracking")
+        print("[Tracker] See PersonTracker.swift comments for detailed setup instructions")
     }
     
     // MARK: - Detection
