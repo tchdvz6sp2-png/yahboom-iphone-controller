@@ -8,6 +8,12 @@
 import Foundation
 import Combine
 
+#if canImport(Darwin)
+import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#endif
+
 @MainActor
 class SettingsViewModel: ObservableObject {
     
@@ -70,16 +76,10 @@ class SettingsViewModel: ObservableObject {
             return (false, "IP address is required")
         }
         
-        // Basic IP address validation
-        let ipComponents = ipAddress.split(separator: ".")
-        guard ipComponents.count == 4 else {
+        // Robust IP address validation using inet_pton
+        var sin = sockaddr_in()
+        if inet_pton(AF_INET, ipAddress, &sin.sin_addr) != 1 {
             return (false, "Invalid IP address format")
-        }
-        
-        for component in ipComponents {
-            guard let value = Int(component), value >= 0 && value <= 255 else {
-                return (false, "Invalid IP address")
-            }
         }
         
         // Validate port

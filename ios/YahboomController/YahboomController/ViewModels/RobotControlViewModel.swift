@@ -135,10 +135,9 @@ class RobotControlViewModel: ObservableObject {
     
     private func startJoystickTimer() {
         // Send joystick commands at 20Hz (every 0.05 seconds)
+        // Note: @MainActor ensures timer callback runs on main thread
         joystickUpdateTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.sendJoystickCommand()
-            }
+            self?.sendJoystickCommand()
         }
     }
     
@@ -156,10 +155,9 @@ class RobotControlViewModel: ObservableObject {
     
     private func startConnectionMonitor() {
         // Check connection status every 0.1 seconds
+        // Note: @MainActor ensures timer callback runs on main thread
         connectionMonitorTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.checkConnectionTimeout()
-            }
+            self?.checkConnectionTimeout()
         }
     }
     

@@ -184,12 +184,18 @@ class VideoPlayerUIView: UIView {
     
     // MARK: - Observers
     
+    private var observerContext = 0
+    private var isObserverAdded = false
+    
     private func setupObservers() {
-        // Observe player item status
-        playerItem?.addObserver(self, 
-                               forKeyPath: "status", 
-                               options: [.new], 
-                               context: nil)
+        // Observe player item status (with context to prevent crashes)
+        if !isObserverAdded {
+            playerItem?.addObserver(self, 
+                                   forKeyPath: "status", 
+                                   options: [.new], 
+                                   context: &observerContext)
+            isObserverAdded = true
+        }
         
         // Observe when playback stalls
         NotificationCenter.default.addObserver(
@@ -212,6 +218,12 @@ class VideoPlayerUIView: UIView {
                               of object: Any?, 
                               change: [NSKeyValueChangeKey : Any]?, 
                               context: UnsafeMutableRawPointer?) {
+        
+        // Check if this is our observer
+        guard context == &observerContext else {
+            super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)
+            return
+        }
         
         if keyPath == "status" {
             if let status = playerItem?.status {
@@ -264,6 +276,11 @@ class VideoPlayerUIView: UIView {
     deinit {
         stopStream()
         NotificationCenter.default.removeObserver(self)
-        playerItem?.removeObserver(self, forKeyPath: "status")
+        
+        // Remove KVO observer safely
+        if isObserverAdded {
+            playerItem?.removeObserver(self, forKeyPath: "status", context: &observerContext)
+            isObserverAdded = false
+        }
     }
 }

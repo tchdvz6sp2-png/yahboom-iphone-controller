@@ -14,9 +14,9 @@ struct DetectionOverlayView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                ForEach(Array(detections.enumerated()), id: \.offset) { index, detection in
+                ForEach(detections.indices, id: \.self) { index in
                     DetectionBox(
-                        detection: detection,
+                        detection: detections[index],
                         frameSize: geometry.size
                     )
                 }
