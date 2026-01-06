@@ -1,0 +1,28 @@
+# Raspberry Pi Requirements for Yahboom Controller
+# Python 3.8+ required
+
+# YAML configuration parsing
+PyYAML>=6.0
+
+# I2C communication for motor control
+smbus2>=0.4.2
+
+# Network and socket programming
+netifaces>=0.11.0
+
+# Video streaming with GStreamer Python bindings
+# Note: Also requires system GStreamer packages (see SETUP_PI.md)
+# Install system packages first:
+#   sudo apt install python3-gi python3-gst-1.0
+# These are system packages, listed here for reference only
+
+# GPIO access (if needed for additional sensors)
+RPi.GPIO>=0.7.1
+
+# Camera interface (Picamera2 for newer Pi OS, or alternative)
+# picamera2>=0.3.12  # For newer Raspberry Pi OS
+# Note: Install via apt on Raspberry Pi:
+#   sudo apt install python3-picamera2
+
+# Logging and utilities
+python-daemon>=3.0.1
