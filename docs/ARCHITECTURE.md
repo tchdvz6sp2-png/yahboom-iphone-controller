@@ -6,7 +6,7 @@ This document describes the architecture and design of the Yahboom Rider Pi CM4 
 
 The system consists of two main components:
 1. **Raspberry Pi Backend**: Motor control and video streaming
-2. **iOS Frontend**: User interface and remote control
+2. **iOS Frontend**: User interface and remote control (SwiftUI + MVVM)
 
 These components communicate over a local network using UDP for motor commands and RTSP for video streaming.
 
@@ -14,37 +14,52 @@ These components communicate over a local network using UDP for motor commands a
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      iOS Application                         │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │   Settings   │  │  Main View   │  │ Stream View  │      │
-│  │     View     │  │  (Joystick)  │  │  (Fullscreen)│      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-│         │                  │                  │              │
-│         └──────────────────┼──────────────────┘              │
-│                            │                                 │
-│  ┌─────────────────────────┼────────────────────────────┐   │
-│  │         Connection Manager                           │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌──────────────┐│   │
-│  │  │ SSH Manager │  │   Motor     │  │    RTSP      ││   │
-│  │  │             │  │ Controller  │  │   Client     ││   │
-│  │  └─────────────┘  └─────────────┘  └──────────────┘│   │
-│  └──────────────────────────────────────────────────────┘   │
-│                            │                                 │
-│  ┌─────────────────────────┴────────────────────────────┐   │
-│  │              YOLOv8 Detector (CoreML)                │   │
+│                   iOS Application (SwiftUI)                  │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │                   SwiftUI Views                      │   │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌───────────┐ │   │
+│  │  │   Settings   │  │ MainControl  │  │ Joystick  │ │   │
+│  │  │     View     │  │     View     │  │   View    │ │   │
+│  │  └──────────────┘  └──────────────┘  └───────────┘ │   │
+│  │  ┌──────────────┐  ┌──────────────┐                │   │
+│  │  │VideoPlayer   │  │  Detection   │                │   │
+│  │  │    View      │  │   Overlay    │                │   │
+│  │  └──────────────┘  └──────────────┘                │   │
+│  └──────────────────────┬─────────────────────────────┘   │
+│                         │ Binding (@Published)             │
+│  ┌──────────────────────┴─────────────────────────────┐   │
+│  │                  ViewModels (MVVM)                  │   │
+│  │  ┌─────────────────┐  ┌──────────────────────────┐│   │
+│  │  │ RobotControl    │  │    Settings              ││   │
+│  │  │  ViewModel      │  │    ViewModel             ││   │
+│  │  │ - 20Hz Timer    │  │ - Input Validation       ││   │
+│  │  │ - Emergency Stop│  │ - UserDefaults Storage   ││   │
+│  │  │ - Connection    │  │ - Configuration          ││   │
+│  │  └─────────────────┘  └──────────────────────────┘│   │
+│  └──────────────────────┬─────────────────────────────┘   │
+│                         │ Business Logic                   │
+│  ┌──────────────────────┴─────────────────────────────┐   │
+│  │                     Models                          │   │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌───────────┐ │   │
+│  │  │   Motor     │  │    YOLO     │  │Connection │ │   │
+│  │  │ Controller  │  │  Detector   │  │  Manager  │ │   │
+│  │  │  (UDP)      │  │  (CoreML)   │  │           │ │   │
+│  │  └─────────────┘  └─────────────┘  └───────────┘ │   │
 │  └──────────────────────────────────────────────────────┘   │
 └──────────────────┬────────────────────┬─────────────────────┘
                    │                    │
                    │ UDP (Port 5005)   │ RTSP (Port 8554)
                    │ Motor Commands    │ Video Stream
+                   │ (20Hz / 50ms)     │ H.264 Encoded
                    │                    │
 ┌──────────────────┴────────────────────┴─────────────────────┐
 │               Raspberry Pi CM4 Backend                       │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │              Motor Controller (Python)               │   │
 │  │  - UDP Server listening on port 5005                 │   │
-│  │  - Parses joystick commands                          │   │
+│  │  - Parses JSON joystick commands                     │   │
 │  │  - Controls motors via I2C                           │   │
+│  │  - Emergency stop on timeout                         │   │
 │  └──────────────────────┬───────────────────────────────┘   │
 │                         │                                    │
 │  ┌──────────────────────┴───────────────────────────────┐   │
@@ -52,6 +67,7 @@ These components communicate over a local network using UDP for motor commands a
 │  │  - Captures from Pi Camera                           │   │
 │  │  - Encodes H.264 video                               │   │
 │  │  - Streams via RTSP on port 8554                     │   │
+│  │  - Auto-restart on client disconnect                 │   │
 │  └──────────────────────┬───────────────────────────────┘   │
 │                         │                                    │
 │  ┌──────────────────────┴───────────────────────────────┐   │
@@ -66,69 +82,106 @@ These components communicate over a local network using UDP for motor commands a
 
 ## Component Details
 
-### iOS Application
+### iOS Application (SwiftUI + MVVM)
 
-#### View Controllers
+#### Architecture Pattern: MVVM
 
-**MainViewController**
-- Primary user interface
-- Displays live video feed
-- Joystick overlay for motor control
-- Object detection visualization
-- Connection status indicator
+The app follows **Model-View-ViewModel** architecture for clean separation of concerns:
 
-**SettingsViewController**
+```
+View (SwiftUI) ←→ ViewModel (@Published) ←→ Model (Business Logic)
+     ↓                     ↓                        ↓
+  UI Events          State Management         Network/Hardware
+```
+
+#### SwiftUI Views
+
+**MainControlView**
+- Primary user interface built with SwiftUI
+- Full-screen video background
+- Overlays: joystick, status, tracking toggle, emergency stop
+- Reactive to ViewModel state changes via `@Published`
+- Sheet presentation for settings
+
+**JoystickSwiftUIView**
+- Touch-based joystick control
+- Drag gesture with constraints
+- Returns normalized X/Y values (-1.0 to 1.0)
+- Visual feedback with animated stick
+- Spring animation on release
+
+**VideoPlayerSwiftUIView**
+- UIViewRepresentable wrapper for AVFoundation
+- RTSP stream rendering
+- Hardware-accelerated H.264 decoding
+- Frame extraction for object detection
+- Auto-reconnection on stream loss
+
+**DetectionOverlayView**
+- Displays YOLOv8 detection results
+- Green bounding boxes around objects
+- Labels with confidence percentages
+- Coordinate conversion (Vision → SwiftUI)
+
+**SettingsView**
+- SwiftUI Form-based configuration
+- Input validation before saving
+- Persistent storage via UserDefaults
+- Connection management
+- Video resolution picker
+
+#### ViewModels
+
+**RobotControlViewModel** (`@MainActor class` + `ObservableObject`)
+- Main state machine for robot control
+- `@Published` properties for reactive UI updates
+- **Joystick control at 20Hz**: Timer-based command sending (50ms intervals)
+- **Emergency stop logic**: Monitors connection timeout (>1 second)
+- **Connection monitoring**: 100ms check intervals
+- **Video frame processing**: Passes frames to YOLODetector
+- **State properties**:
+  - `isConnected: Bool`
+  - `connectionStatus: String`
+  - `detections: [YOLODetector.Detection]`
+  - `isTrackingEnabled: Bool`
+  - `emergencyStopActive: Bool`
+
+**SettingsViewModel** (`@MainActor class` + `ObservableObject`)
 - Configuration management
-- Network settings (IP, ports)
-- Motor control parameters
-- Video quality options
-- SSH credentials
-
-**StreamViewController**
-- Full-screen video display
-- Touch gesture controls
-- Recording capabilities
-- Quality adjustment
+- Input validation (IP, port, URL)
+- `@Published` properties for form fields
+- Video resolution selection
+- Persistent storage interface
+- Settings retrieval methods
 
 #### Models
 
-**ConnectionManager**
-- Singleton pattern for managing all connections
-- Coordinates SSH, UDP, and RTSP connections
-- Handles reconnection logic
-- Monitors connection health
-
 **MotorController**
+- UDP-based motor control via Network framework
 - Translates joystick input to motor commands
-- Formats UDP packets
-- Sends commands to Raspberry Pi
-- Implements command queuing and throttling
-
-**SSHManager**
-- Establishes SSH connections to Raspberry Pi
-- Executes remote commands
-- Manages authentication
-- Used for configuration and diagnostics
+- JSON packet format: `{left: speed, right: speed, timestamp: time}`
+- Differential drive calculation
+- Command queuing and throttling
+- Connection state management
 
 **YOLODetector**
 - Wraps CoreML YOLOv8 model
-- Processes video frames
-- Returns detected objects with bounding boxes
-- Runs asynchronously on separate queue
+- Processes CVPixelBuffer from video stream
+- Returns Detection objects with bounding boxes
+- Runs on background queue
+- Configurable confidence threshold
+- Supports both UIImage and CVPixelBuffer inputs
 
-#### Custom Views
+**ConnectionManager**
+- Legacy singleton for backward compatibility
+- Coordinates MotorController instances
+- Persistent settings via UserDefaults
+- Connection status callbacks
 
-**JoystickView**
-- Touch-based joystick control
-- Returns normalized X/Y values (-1.0 to 1.0)
-- Visual feedback for touch position
-- Supports both drag and tap modes
-
-**VideoPlayerView**
-- RTSP stream rendering using AVFoundation
-- Hardware-accelerated decoding
-- Handles stream buffering
-- Automatic reconnection on stream loss
+**SSHManager**
+- Placeholder for SSH functionality
+- Credential storage (should use Keychain in production)
+- Remote command execution interface
 
 ### Raspberry Pi Backend
 
@@ -234,29 +287,67 @@ logging:
 
 ## Data Flow
 
-### Motor Control Flow
+### Motor Control Flow (SwiftUI MVVM)
 
 1. User touches joystick on iOS device
-2. JoystickView calculates X/Y position
-3. MotorController converts to left/right motor speeds
-4. UDP packet sent to Raspberry Pi
-5. motor_controller.py receives and parses packet
-6. I2C commands sent to motor driver
-7. Motors respond to commands
+2. **JoystickSwiftUIView** drag gesture handler calculates X/Y position
+3. View calls `viewModel.updateJoystickPosition(x:y:)` method
+4. **RobotControlViewModel** stores current joystick state
+5. **20Hz Timer** (50ms interval) calls `sendJoystickCommand()`
+6. **MotorController** converts joystick to left/right motor speeds
+7. UDP packet (JSON) sent to Raspberry Pi
+8. `motor_controller.py` receives and parses packet
+9. I2C commands sent to motor driver
+10. Motors respond to commands
 
-**Latency**: ~20-50ms end-to-end
+**Latency**: ~20-50ms end-to-end  
+**Update Rate**: Exactly 20Hz (commands sent every 50ms)  
+**Emergency Stop**: Auto-trigger if no command for >1 second
+
+**Flow Diagram**:
+```
+Touch Event → SwiftUI View → ViewModel → Timer (20Hz) → Model → UDP → Pi → I2C → Motors
+                                ↑                                           
+                                └─── @Published State Updates ────┘
+```
 
 ### Video Streaming Flow
 
 1. Pi Camera captures frame
 2. GStreamer encodes to H.264
 3. RTSP server packetizes and transmits
-4. iOS device receives packets
-5. AVFoundation decodes and renders
-6. YOLODetector processes frame (if enabled)
-7. Detected objects overlaid on display
+4. iOS device receives packets via AVFoundation
+5. **VideoPlayerSwiftUIView** UIViewRepresentable decodes and renders
+6. `CADisplayLink` extracts CVPixelBuffer (30 FPS)
+7. **RobotControlViewModel** receives frame via callback
+8. If tracking enabled, passes to **YOLODetector** 
+9. YOLODetector processes asynchronously on background queue
+10. Detection results published via `@Published var detections`
+11. **DetectionOverlayView** reactively updates with bounding boxes
 
-**Latency**: ~150-300ms end-to-end
+**Latency**: ~150-300ms end-to-end  
+**Frame Rate**: 30 FPS (camera) → 30 FPS (display) → ~15-30 FPS (detection)
+
+**Flow Diagram**:
+```
+Camera → GStreamer → RTSP → AVPlayer → UIView → SwiftUI → ViewModel → YOLODetector
+                                                     ↓                      ↓
+                                                  Display ← DetectionOverlay
+```
+
+### Settings Persistence Flow
+
+1. User edits settings in **SettingsView**
+2. SwiftUI `TextField` binds to `@Published var` in **SettingsViewModel**
+3. User taps "Save" button
+4. `validateSettings()` checks IP, port, URL formats
+5. If valid, `saveSettings()` writes to `UserDefaults`
+6. On "Connect", ViewModel calls `RobotControlViewModel.connect()`
+7. Settings passed to **MotorController** initialization
+8. Connection status updates published via `@Published var isConnected`
+9. SwiftUI views automatically re-render
+
+**Persistence**: UserDefaults (synchronous, automatic iCloud sync if enabled)
 
 ## Security Considerations
 
@@ -344,12 +435,17 @@ logging:
 - python3-smbus (I2C)
 - picamera2 or v4l2
 
-### iOS
-- Swift 5.0+
-- iOS 15.0+
-- AVFoundation
-- CoreML
-- Network framework
+### iOS (SwiftUI App)
+- **Swift 5.5+** (for async/await, if used)
+- **iOS 15.0+** (minimum deployment target)
+- **SwiftUI** (declarative UI framework)
+- **Combine** (reactive programming)
+- **AVFoundation** (video playback)
+- **CoreML** (machine learning)
+- **Vision** (image analysis)
+- **Network** (modern networking, UDP)
+
+**No External Dependencies**: App uses only iOS system frameworks
 
 ## Configuration Management
 
